@@ -5,6 +5,7 @@ Zgodnie z SOLID: kompozycja zależności, otwarta na rozszerzenia
 
 import asyncio
 import logging
+import random
 from typing import Optional
 from enum import Enum
 
@@ -195,7 +196,9 @@ class PrinterAgent:
         while self.running:
             try:
                 await self.run_cycle()
-                await asyncio.sleep(2)  # Cykl co 2 sekundy
+                # Random delay between 3-20 seconds
+                delay = random.uniform(3.0, 20.0)
+                await asyncio.sleep(delay)
             except Exception as e:
                 logger.error(f"Error in agent cycle: {e}")
                 await asyncio.sleep(5)

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Skrypt do automatycznego uruchamiania agentów dla wszystkich drukarek
-Wykrywa wszystkie drukarki z symulatora i uruchamia dla nich agentów
-Automatycznie wykrywa nowe drukarki i uruchamia dla nich agentów
+Script for automatically starting agents for all printers.
+Discovers all printers from the simulator and starts agents for them.
+Automatically detects new printers and starts agents for them.
 """
 
 import asyncio
@@ -21,11 +21,19 @@ logger = logging.getLogger(__name__)
 
 
 async def get_all_printers(simulator_url: str, retries: int = 3) -> Set[str]:
-    """Pobiera listę wszystkich drukarek z symulatora z retry logic"""
+    """
+    Fetches list of all printers from simulator with retry logic.
+    
+    Args:
+        simulator_url: URL of the simulator
+        retries: Number of retry attempts
+        
+    Returns:
+        Set of printer IDs
+    """
     for attempt in range(retries):
         try:
             async with aiohttp.ClientSession() as session:
-                # Użyj /api/environment/state zamiast /devices (bardziej niezawodny)
                 async with session.get(
                     f"{simulator_url}/api/environment/state",
                     timeout=aiohttp.ClientTimeout(total=10)
@@ -34,7 +42,7 @@ async def get_all_printers(simulator_url: str, retries: int = 3) -> Set[str]:
                         state = await response.json()
                         printers = set()
                         
-                        # Przejdź przez wszystkie pokoje i znajdź drukarki
+                        # Iterate through all rooms and find printers
                         rooms = state.get("rooms", [])
                         for room in rooms:
                             printer = room.get("printer")
@@ -42,41 +50,41 @@ async def get_all_printers(simulator_url: str, retries: int = 3) -> Set[str]:
                                 printers.add(printer["id"])
                         
                         if printers:
-                            logger.info(f"Znaleziono {len(printers)} drukarek: {printers}")
+                            logger.info(f"Found {len(printers)} printers: {printers}")
                         return printers
                     elif response.status == 500:
                         error_text = await response.text()
                         logger.warning(
-                            f"Symulator zwrócił błąd 500 (próba {attempt + 1}/{retries}): {error_text[:200]}"
+                            f"Simulator returned 500 error (attempt {attempt + 1}/{retries}): {error_text[:200]}"
                         )
                         if attempt < retries - 1:
-                            await asyncio.sleep(2)  # Poczekaj przed ponowną próbą
+                            await asyncio.sleep(2)
                             continue
                     else:
                         logger.warning(
-                            f"Failed to fetch devices: {response.status} (próba {attempt + 1}/{retries})"
+                            f"Failed to fetch devices: {response.status} (attempt {attempt + 1}/{retries})"
                         )
                         if attempt < retries - 1:
                             await asyncio.sleep(2)
                             continue
                         return set()
         except asyncio.TimeoutError:
-            logger.warning(f"Timeout przy pobieraniu drukarek (próba {attempt + 1}/{retries})")
+            logger.warning(f"Timeout while fetching printers (attempt {attempt + 1}/{retries})")
             if attempt < retries - 1:
                 await asyncio.sleep(2)
                 continue
         except aiohttp.ClientError as e:
-            logger.warning(f"Błąd połączenia z symulatorem (próba {attempt + 1}/{retries}): {e}")
+            logger.warning(f"Connection error with simulator (attempt {attempt + 1}/{retries}): {e}")
             if attempt < retries - 1:
                 await asyncio.sleep(2)
                 continue
         except Exception as e:
-            logger.error(f"Nieoczekiwany błąd przy pobieraniu drukarek: {e}")
+            logger.error(f"Unexpected error while fetching printers: {e}")
             if attempt < retries - 1:
                 await asyncio.sleep(2)
                 continue
     
-    logger.error("Nie udało się pobrać listy drukarek po wszystkich próbach")
+    logger.error("Failed to fetch printer list after all attempts")
     return set()
 
 
@@ -85,8 +93,18 @@ async def start_agent_for_printer(
     simulator_url: str,
     visualization_url: str = None
 ) -> PrinterAgent:
-    """Uruchamia agenta dla konkretnej drukarki"""
-    logger.info(f"🚀 Uruchamianie agenta dla drukarki: {printer_id}")
+    """
+    Starts an agent for a specific printer.
+    
+    Args:
+        printer_id: ID of the printer
+        simulator_url: URL of the simulator
+        visualization_url: Optional URL of the visualization service
+        
+    Returns:
+        Started PrinterAgent instance
+    """
+    logger.info(f"Starting agent for printer: {printer_id}")
     
     agent = AgentFactory.create_agent(
         printer_id=printer_id,
@@ -94,59 +112,62 @@ async def start_agent_for_printer(
         visualization_url=visualization_url
     )
     
-    # Uruchom agenta w tle
+    # Start agent in background
     asyncio.create_task(agent.start())
     
     return agent
 
 
 async def main():
-    """Główna funkcja - uruchamia agentów dla wszystkich drukarek"""
+    """
+    Main function - starts agents for all printers.
+    Monitors for new printers and manages agent lifecycle.
+    """
     simulator_url = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8080"
     visualization_url = sys.argv[2] if len(sys.argv) > 2 else None
-    check_interval = int(sys.argv[3]) if len(sys.argv) > 3 else 30  # Sprawdzaj co 30 sekund
+    check_interval = int(sys.argv[3]) if len(sys.argv) > 3 else 30
     
     logger.info("=" * 60)
-    logger.info("🤖 Manager Agentów Drukarek")
+    logger.info("Printer Agent Manager")
     logger.info("=" * 60)
     logger.info(f"Simulator URL: {simulator_url}")
     if visualization_url:
         logger.info(f"Visualization URL: {visualization_url}")
-    logger.info(f"Interwał sprawdzania nowych drukarek: {check_interval} sekund")
+    logger.info(f"Check interval for new printers: {check_interval} seconds")
     logger.info("")
     
-    # Słownik przechowujący uruchomione agenty: printer_id -> agent
+    # Dictionary storing running agents: printer_id -> agent
     running_agents: Dict[str, PrinterAgent] = {}
     
-    # Poczekaj chwilę, aby symulator się uruchomił i sprawdź czy działa
-    logger.info("Czekanie na symulator...")
-    max_wait_time = 30  # Maksymalnie 30 sekund
+    # Wait for simulator to start and check if it's running
+    logger.info("Waiting for simulator...")
+    max_wait_time = 30
     wait_interval = 2
     waited = 0
     
     while waited < max_wait_time:
         printers = await get_all_printers(simulator_url, retries=1)
         if printers:
-            logger.info(f"✅ Symulator działa! Znaleziono {len(printers)} drukarek.")
+            logger.info(f"Simulator is running. Found {len(printers)} printers.")
             break
         else:
-            logger.info(f"⏳ Czekam na symulator... ({waited}/{max_wait_time}s)")
+            logger.info(f"Waiting for simulator... ({waited}/{max_wait_time}s)")
             await asyncio.sleep(wait_interval)
             waited += wait_interval
     
     if waited >= max_wait_time:
-        logger.error("❌ Symulator nie odpowiada po 30 sekundach. Sprawdź czy symulator jest uruchomiony.")
-        logger.error("   Uruchom symulator: cd OrSimulator && ./gradlew run")
+        logger.error("Simulator did not respond after 30 seconds. Check if simulator is running.")
+        logger.error("Start simulator: cd OrSimulator && ./gradlew run")
         return
     
-    # Funkcja do sprawdzania i uruchamiania agentów
     async def check_and_start_agents():
+        """Check for new printers and start/stop agents as needed."""
         nonlocal running_agents
         
-        # Pobierz wszystkie drukarki
+        # Fetch all printers
         printers = await get_all_printers(simulator_url)
         
-        # Uruchom agentów dla nowych drukarek
+        # Start agents for new printers
         for printer_id in printers:
             if printer_id not in running_agents:
                 try:
@@ -156,24 +177,24 @@ async def main():
                         visualization_url
                     )
                     running_agents[printer_id] = agent
-                    await asyncio.sleep(1)  # Małe opóźnienie między uruchomieniami
+                    await asyncio.sleep(1)  # Small delay between starts
                 except Exception as e:
-                    logger.error(f"Błąd przy uruchamianiu agenta dla {printer_id}: {e}")
+                    logger.error(f"Error starting agent for {printer_id}: {e}")
         
-        # Usuń agentów dla drukarek, które już nie istnieją
+        # Remove agents for printers that no longer exist
         printers_to_remove = set(running_agents.keys()) - printers
         for printer_id in printers_to_remove:
-            logger.info(f"⚠️  Drukarka {printer_id} już nie istnieje, zatrzymywanie agenta...")
+            logger.info(f"Printer {printer_id} no longer exists, stopping agent...")
             agent = running_agents.pop(printer_id)
             agent.stop()
             await agent.cleanup()
         
-        logger.info(f"📊 Status: {len(running_agents)} aktywnych agentów dla drukarek: {list(running_agents.keys())}")
+        logger.info(f"Status: {len(running_agents)} active agents for printers: {list(running_agents.keys())}")
     
-    # Pierwsze uruchomienie
+    # Initial agent startup
     await check_and_start_agents()
     
-    # Pętla monitorująca nowe drukarki
+    # Monitoring loop for new printers
     try:
         while True:
             await asyncio.sleep(check_interval)
@@ -181,20 +202,20 @@ async def main():
     except KeyboardInterrupt:
         logger.info("")
         logger.info("=" * 60)
-        logger.info("🛑 Zatrzymywanie wszystkich agentów...")
+        logger.info("Stopping all agents...")
         logger.info("=" * 60)
         
-        # Zatrzymaj wszystkich agentów
+        # Stop all agents
         for printer_id, agent in running_agents.items():
-            logger.info(f"Zatrzymywanie agenta dla {printer_id}...")
+            logger.info(f"Stopping agent for {printer_id}...")
             agent.stop()
             await agent.cleanup()
         
-        logger.info("✅ Wszystkie agenty zostały zatrzymane")
+        logger.info("All agents stopped")
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Zakończono przez użytkownika")
+        logger.info("Stopped")

@@ -83,6 +83,32 @@ class ActionExecutor(IActionExecutor):
                 logger.warning("Power outage - printer will be unavailable")
                 return True
             
+            elif action == "consume_resources":
+                # Consume printer resources (toner and paper)
+                toner_consumption = intention.get("toner_consumption", 0.0)
+                paper_consumption = intention.get("paper_consumption", 0.0)
+                current_toner = intention.get("current_toner", 100)
+                current_paper = intention.get("current_paper", 100)
+                
+                if toner_consumption > 0 or paper_consumption > 0:
+                    # Calculate new levels
+                    new_toner = max(0, int(current_toner - toner_consumption))
+                    new_paper = max(0, int(current_paper - paper_consumption))
+                    
+                    # Update levels via API
+                    if toner_consumption > 0:
+                        await self.device_controller.set_toner_level(target, new_toner)
+                    if paper_consumption > 0:
+                        await self.device_controller.set_paper_level(target, new_paper)
+                    
+                    logger.debug(
+                        f"Consumed resources for {target}: "
+                        f"toner -{toner_consumption:.2f}% ({current_toner}% -> {new_toner}%), "
+                        f"paper -{paper_consumption:.2f}% ({current_paper}% -> {new_paper}%)"
+                    )
+                
+                return True
+            
             else:
                 logger.warning(f"Unknown action: {action}")
                 return False

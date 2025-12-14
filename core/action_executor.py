@@ -37,10 +37,20 @@ class ActionExecutor(IActionExecutor):
         
         try:
             if action == "turn_on":
-                return await self.device_controller.turn_on(target)
+                result = await self.device_controller.turn_on(target)
+                if result:
+                    logger.info(f"✅ Successfully turned ON printer {target}")
+                else:
+                    logger.warning(f"❌ Failed to turn ON printer {target}")
+                return result
             
             elif action == "turn_off":
-                return await self.device_controller.turn_off(target)
+                result = await self.device_controller.turn_off(target)
+                if result:
+                    logger.info(f"✅ Successfully turned OFF printer {target}")
+                else:
+                    logger.warning(f"❌ Failed to turn OFF printer {target}")
+                return result
             
             elif action == "alert_low_toner":
                 toner_level = intention.get("toner_level", 0)

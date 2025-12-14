@@ -25,11 +25,17 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         self,
         toner_threshold_low: int = 20,
         paper_threshold_low: int = 15,
-        motion_timeout: int = 300
+        motion_timeout: int = 300,
+        max_operation_time: int = 20  # Maksymalny czas działania drukarki w sekundach (20 sekund = 20 minut symulacji)
     ):
         self.toner_threshold_low = toner_threshold_low
         self.paper_threshold_low = paper_threshold_low
         self.motion_timeout = motion_timeout
+        self.max_operation_time = max_operation_time
+        # Śledzenie czasu włączenia drukarki (tylko w agencie)
+        self._printer_turned_on_at: Optional[datetime] = None
+        # Losowy czas działania dla aktualnej sesji (1-20 sekund)
+        self._current_operation_time_limit: Optional[float] = None
     
     def deliberate(
         self, 
@@ -84,7 +90,41 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 "priority": 1
             })
         
-        # Reguła 5: Zarządzanie energią - wyłącz jeśli brak ruchu
+        # Śledzenie czasu włączenia drukarki
+        if beliefs.state == "ON":
+            # Jeśli drukarka jest włączona, ale nie mamy zapisanego czasu włączenia, zapisz go teraz
+            if self._printer_turned_on_at is None:
+                self._printer_turned_on_at = datetime.now()
+                # Losuj czas działania z przedziału 1-20 sekund
+                self._current_operation_time_limit = random.uniform(1.0, float(self.max_operation_time))
+                logger.info(
+                    f"🔄 Printer {beliefs.printer_id} turned on. "
+                    f"Will operate for {self._current_operation_time_limit:.1f} seconds (random 1-{self.max_operation_time}s)"
+                )
+        else:
+            # Jeśli drukarka jest wyłączona, wyczyść czas włączenia i limit
+            if self._printer_turned_on_at is not None:
+                self._printer_turned_on_at = None
+                self._current_operation_time_limit = None
+        
+        # Reguła 5: Maksymalny czas działania - wyłącz po losowym czasie (1-20 sekund)
+        if (beliefs.state == "ON" and 
+            self._printer_turned_on_at is not None and 
+            self._current_operation_time_limit is not None):
+            time_since_turn_on = (datetime.now() - self._printer_turned_on_at).total_seconds()
+            if time_since_turn_on >= self._current_operation_time_limit:
+                intentions.append({
+                    "action": "turn_off",
+                    "target": beliefs.printer_id,
+                    "reason": f"Operation time limit reached: {time_since_turn_on:.1f}s / {self._current_operation_time_limit:.1f}s",
+                    "priority": 1  # Wysoki priorytet - wyłącz natychmiast
+                })
+                logger.info(
+                    f"⏰ Printer {beliefs.printer_id} reached operation time limit "
+                    f"({self._current_operation_time_limit:.1f}s)"
+                )
+        
+        # Reguła 6: Zarządzanie energią - wyłącz jeśli brak ruchu
         if beliefs.state == "ON" and beliefs.people_count == 0:
             if beliefs.last_motion_time:
                 try:
@@ -102,7 +142,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 except Exception as e:
                     logger.warning(f"Error parsing motion time: {e}")
         
-        # Reguła 6: Włącz jeśli jest ruch i drukarka wyłączona
+        # Reguła 7: Włącz jeśli jest ruch i drukarka wyłączona
         if (beliefs.state == "OFF" and 
             beliefs.people_count > 0 and
             not beliefs.power_outage):

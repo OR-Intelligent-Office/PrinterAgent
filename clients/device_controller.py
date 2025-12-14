@@ -44,14 +44,24 @@ class SimulatorDeviceController(IDeviceController):
             ) as response:
                 if response.status == 200:
                     result = await response.json()
-                    if result.get("success"):
+                    # Handle both boolean and string success values
+                    success_value = result.get("success")
+                    is_success = success_value is True or success_value == "true"
+                    if is_success:
                         logger.info(f"Printer {action} successful for {device_id}")
                         return True
                     else:
                         logger.error(f"Printer {action} failed: {result.get('error')}")
                         return False
                 else:
-                    logger.error(f"HTTP error {response.status} for {action}")
+                    # Pobierz szczegóły błędu z odpowiedzi
+                    try:
+                        error_text = await response.text()
+                        logger.error(
+                            f"HTTP error {response.status} for {action} on {device_id}: {error_text[:500]}"
+                        )
+                    except Exception:
+                        logger.error(f"HTTP error {response.status} for {action} on {device_id} (could not read error body)")
                     return False
         except Exception as e:
             logger.error(f"Error controlling printer: {e}")

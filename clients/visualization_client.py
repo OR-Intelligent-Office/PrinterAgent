@@ -3,6 +3,7 @@ Klient wizualizacji
 Single Responsibility: tylko komunikacja z wizualizatorem
 """
 
+import asyncio
 import logging
 from typing import Dict, Any, Optional
 import aiohttp
@@ -87,16 +88,32 @@ class HttpVisualizationClient(IVisualizationClient):
             if not session:
                 return
             
+            # Wizualizator pobiera dane z symulatora, więc nie wysyłamy aktualizacji bezpośrednio
+            # Zamiast tego logujemy stan dla debugowania
+            logger.debug(
+                f"Agent state update: printer_id={state.get('printer_id')}, "
+                f"printer_state={state.get('printer_state')}, "
+                f"agent_state={state.get('state')}"
+            )
+            
+            # Próba wysłania do wizualizatora (jeśli ma endpoint)
             async with session.post(
                 f"{self.base_url}/api/agent-state",
-                json=state
+                json=state,
+                timeout=aiohttp.ClientTimeout(total=2)
             ) as response:
                 if response.status == 200:
                     logger.debug(f"State update sent to visualizer")
+                elif response.status == 404:
+                    # Wizualizator nie ma tego endpointu - to normalne, wizualizator pobiera dane z symulatora
+                    logger.debug(f"Visualizer doesn't have /api/agent-state endpoint (normal - visualizer reads from simulator)")
                 else:
-                    logger.warning(f"Failed to send state update: {response.status}")
+                    logger.debug(f"Visualizer response: {response.status}")
+        except asyncio.TimeoutError:
+            # Timeout jest normalny, jeśli wizualizator nie ma tego endpointu
+            logger.debug(f"Timeout sending state update (normal if visualizer doesn't have endpoint)")
         except Exception as e:
-            logger.warning(f"Could not send state update to visualizer: {e}")
+            logger.debug(f"Could not send state update to visualizer: {e}")
 
 
 class NullVisualizationClient(IVisualizationClient):

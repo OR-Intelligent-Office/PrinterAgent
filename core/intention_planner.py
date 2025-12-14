@@ -5,6 +5,7 @@ Open/Closed Principle: łatwo rozszerzyć o nowe reguły
 """
 
 import logging
+import random
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from interfaces.bdi_interfaces import IIntentionPlanner
@@ -105,12 +106,14 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         if (beliefs.state == "OFF" and 
             beliefs.people_count > 0 and
             not beliefs.power_outage):
-            intentions.append({
-                "action": "turn_on",
-                "target": beliefs.printer_id,
-                "reason": f"Motion detected: {beliefs.people_count} people in room",
-                "priority": 3
-            })
+            # 50% szans na włączenie drukarki przy wykryciu ruchu
+            if random.random() < 0.5:
+                intentions.append({
+                    "action": "turn_on",
+                    "target": beliefs.printer_id,
+                    "reason": f"Motion detected: {beliefs.people_count} people in room (50% chance)",
+                    "priority": 3
+                })
         
         # Sortuj według priorytetu
         intentions.sort(key=lambda x: x.get("priority", 999))

@@ -1,7 +1,5 @@
-"""
-Wykonawca akcji agenta
-Single Responsibility: tylko wykonywanie akcji
-"""
+# Action executor
+# Single Responsibility: only action execution
 
 import logging
 from typing import Dict, Any
@@ -13,11 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class ActionExecutor(IActionExecutor):
-    """
-    Wykonawca akcji - wykonuje intencje agenta
-    Zgodnie z SRP: tylko odpowiedzialność za wykonywanie akcji
-    Zgodnie z DIP: zależy od abstrakcji (IDeviceController, IVisualizationClient)
-    """
+    # Executes agent intentions
+    # SRP: only responsible for action execution
+    # DIP: depends on abstractions (IDeviceController, IVisualizationClient)
     
     def __init__(
         self,
@@ -28,7 +24,7 @@ class ActionExecutor(IActionExecutor):
         self.visualization_client = visualization_client
     
     async def execute(self, intention: Dict[str, Any]) -> bool:
-        """Wykonuje intencję (akcję)"""
+        # Execute intention (action)
         action = intention.get("action")
         target = intention.get("target")
         reason = intention.get("reason", "")
@@ -59,7 +55,6 @@ class ActionExecutor(IActionExecutor):
                     "printer_id": target,
                     "toner_level": toner_level
                 })
-                # Zwracamy True, ale intencja będzie ponownie dodana w następnym cyklu jeśli problem nadal istnieje
                 return True
             
             elif action == "alert_low_paper":
@@ -69,7 +64,6 @@ class ActionExecutor(IActionExecutor):
                     "printer_id": target,
                     "paper_level": paper_level
                 })
-                # Zwracamy True, ale intencja będzie ponownie dodana w następnym cyklu jeśli problem nadal istnieje
                 return True
             
             elif action == "handle_failure":
@@ -109,7 +103,7 @@ class ActionExecutor(IActionExecutor):
                         f"paper -{paper_used:.2f}% ({current_paper}% -> {new_paper}%)"
                     )
                     
-                    # Informacja co sekundę do wizualizatora
+                    # Send update to visualizer every second
                     await self.visualization_client.send_state_update({
                         "printer_id": target,
                         "state": "printing",

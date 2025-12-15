@@ -1,7 +1,5 @@
-"""
-Implementacja klienta środowiska
-Single Responsibility: tylko komunikacja z API symulatora
-"""
+# Environment client implementation
+# Single Responsibility: only communication with simulator API
 
 import logging
 from typing import Optional
@@ -13,10 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class SimulatorEnvironmentClient(IEnvironmentClient):
-    """
-    Klient środowiska - komunikacja z OrSimulator API
-    Zgodnie z SRP: tylko odpowiedzialność za komunikację z API
-    """
+    # Environment client - communication with OrSimulator API
+    # SRP: only responsible for API communication
     
     def __init__(self, base_url: str = "http://localhost:8080"):
         self.base_url = base_url
@@ -29,12 +25,12 @@ class SimulatorEnvironmentClient(IEnvironmentClient):
         return self._session
     
     async def close(self):
-        """Zamyka sesję HTTP"""
+        # Close HTTP session
         if self._session and not self._session.closed:
             await self._session.close()
     
     async def get_environment_state(self) -> Optional[EnvironmentState]:
-        """Pobiera aktualny stan środowiska z symulatora"""
+        # Get current environment state from simulator
         try:
             session = await self._get_session()
             async with session.get(f"{self.base_url}/api/environment/state") as response:
@@ -56,7 +52,7 @@ class SimulatorEnvironmentClient(IEnvironmentClient):
             return None
     
     async def get_printer_state(self, printer_id: str) -> Optional[PrinterState]:
-        """Pobiera stan konkretnej drukarki"""
+        # Get specific printer state
         try:
             session = await self._get_session()
             async with session.get(
@@ -65,7 +61,7 @@ class SimulatorEnvironmentClient(IEnvironmentClient):
                 if response.status == 200:
                     printer_data = await response.json()
                     
-                    # Musimy też pobrać informacje o pokoju
+                    # Get room information
                     env_state = await self.get_environment_state()
                     if not env_state:
                         return None

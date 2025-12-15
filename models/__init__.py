@@ -1,6 +1,4 @@
-"""
-Modele danych używane w systemie
-"""
+# Data models used in the system
 
 from .environment_models import EnvironmentState, PrinterState
 

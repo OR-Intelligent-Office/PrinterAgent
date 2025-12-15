@@ -1,8 +1,6 @@
-"""
-Planowanie intencji agenta (Intentions)
-Single Responsibility: tylko planowanie akcji
-Open/Closed Principle: łatwo rozszerzyć o nowe reguły
-"""
+# Intention planning (BDI Intentions)
+# Single Responsibility: only action planning
+# Open/Closed Principle: easy to extend with new rules
 
 import logging
 import random
@@ -15,11 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class RuleBasedIntentionPlanner(IIntentionPlanner):
-    """
-    Planista intencji oparty na regułach zgodnych z wymaganiami symulacji drukarki.
-    Utrzymuje krótkie sesje drukowania, per‑sekundowe zużycie zasobów
-    i automatyczne wyłączanie, gdy drukarka jest bezczynna lub pokój pusty.
-    """
+    # Rule-based intention planner for printer simulation
+    # Maintains short print sessions, per-second resource consumption
+    # and automatic shutdown when printer is idle or room is empty
     
     def __init__(
         self,
@@ -37,20 +33,20 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         self.consumption_interval_seconds = consumption_interval_seconds
         self.idle_shutdown_seconds = idle_shutdown_seconds
         
-        # Śledzenie stanu drukowania
+        # Print session state tracking
         self._current_session_start: Optional[datetime] = None
         self._current_session_end: Optional[datetime] = None
         self._last_consumption_time: Optional[datetime] = None
         self._last_printer_state: Optional[str] = None
         self._is_consuming_resources: bool = False
-        self._shutdown_pending: bool = False  # blokuje nowe sesje do faktycznego OFF
-        self._print_session_started_once: bool = False  # pojedyncza sesja na cykl ON
-        self._session_finished_at: Optional[datetime] = None  # moment zakończenia trybu print
-        self._last_turn_on_time: Optional[datetime] = None  # minimalny odstęp między uruchomieniami
-        self._last_session_end_time: Optional[datetime] = None  # odstęp od zakończenia do kolejnego startu
+        self._shutdown_pending: bool = False  # Blocks new sessions until actual OFF
+        self._print_session_started_once: bool = False  # Single session per ON cycle
+        self._session_finished_at: Optional[datetime] = None  # Print mode end time
+        self._last_turn_on_time: Optional[datetime] = None  # Min interval between starts
+        self._last_session_end_time: Optional[datetime] = None  # Interval from end to next start
     
     def _reset_consumption_tracking(self):
-        """Czyści dane sesji drukowania."""
+        # Clear print session data
         self._current_session_start = None
         self._current_session_end = None
         self._last_consumption_time = None
@@ -58,11 +54,11 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         self._shutdown_pending = False
         self._print_session_started_once = False
         self._session_finished_at = None
-        # _last_turn_on_time i _last_session_end_time zostają zachowane,
-        # aby respektować minimalny odstęp pomiędzy startami
+        # _last_turn_on_time and _last_session_end_time are preserved
+        # to respect minimum interval between starts
     
     def _start_print_session(self, now: datetime, printer_id: str):
-        """Rozpoczyna nową sesję drukowania o losowym czasie trwania."""
+        # Start new print session with random duration
         duration = random.randint(self.print_duration_min, self.print_duration_max)
         self._current_session_start = now
         self._current_session_end = now + timedelta(seconds=duration)
@@ -74,7 +70,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         )
     
     def is_consuming(self) -> bool:
-        """Informacja pomocnicza dla agenta o tym, czy trwa faktyczne zużycie."""
+        # Helper info for agent about actual resource consumption
         return self._is_consuming_resources
     
     def deliberate(
@@ -82,10 +78,8 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         beliefs: Optional[PrinterState],
         desires: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        """
-        Analizuje przekonania i pragnienia, generuje intencje z per‑sekundowym
-        zużyciem zasobów i automatycznym wyłączaniem.
-        """
+        # Analyze beliefs and desires, generate intentions with per-second
+        # resource consumption and automatic shutdown
         if not beliefs:
             self._reset_consumption_tracking()
             return []
@@ -93,7 +87,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         intentions: List[Dict[str, Any]] = []
         now = datetime.now()
         
-        # Alerty zasobów i awarii
+        # Check resource alerts and failures
         if beliefs.toner_level < self.toner_threshold_low:
             intentions.append({
                 "action": "alert_low_toner",
@@ -128,7 +122,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 "reason": "Power outage detected",
                 "priority": 1
             })
-            # Podczas braku zasilania drukarka nie może być włączona
+            # Turn off printer if ON during power outage
             if beliefs.state == "ON":
                 intentions.append({
                     "action": "turn_off",
@@ -143,12 +137,12 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 intentions.sort(key=lambda x: x.get("priority", 999))
                 return intentions
         
-        # Jeśli drukarka jest wyłączona, postaraj się ją uruchomić i zakończ przetwarzanie
+        # Try to start printer if OFF
         if beliefs.state != "ON":
             if (not beliefs.power_outage 
                 and beliefs.toner_level > 0 
                 and beliefs.paper_level > 0):
-                # Probabilistyczne uruchomienie zależne od pory dnia
+                # Probabilistic start based on time of day
                 hour = now.hour
                 if 7 <= hour < 13:
                     turn_on_prob = 0.8
@@ -157,7 +151,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 else:
                     turn_on_prob = 0.1
                 
-                # Minimalny odstęp 5s od poprzedniego uruchomienia lub zakończenia sesji
+                # Minimum 5s interval from previous start or session end
                 last_blocking_time = self._last_turn_on_time
                 if self._last_session_end_time and (last_blocking_time is None or self._last_session_end_time > last_blocking_time):
                     last_blocking_time = self._last_session_end_time
@@ -180,13 +174,13 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
             intentions.sort(key=lambda x: x.get("priority", 999))
             return intentions
         
-        # Od tego momentu drukarka jest włączona
+        # Printer is ON - start print session
         state_just_turned_on = self._last_printer_state != "ON"
         if not self._shutdown_pending and (state_just_turned_on and not self._print_session_started_once):
             self._start_print_session(now, beliefs.printer_id)
             self._print_session_started_once = True
         
-        # Natychmiastowe wyłączenie gdy pokój pusty
+        # Turn off immediately if room is empty
         if beliefs.people_count <= 0:
             intentions.append({
                 "action": "turn_off",
@@ -201,7 +195,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
             intentions.sort(key=lambda x: x.get("priority", 999))
             return intentions
         
-        # Sesja drukowania: zużycie co 1s w oknie 1-10s
+        # Print session: consume resources every 1s within 1-10s window
         session_active = (
             self._current_session_end is not None
             and now < self._current_session_end
@@ -235,16 +229,16 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 self._last_consumption_time = now
                 self._is_consuming_resources = True
         else:
-            # Sesja wygasła lub brak zasobów - brak dalszego zużycia
+            # Session ended or no resources - check shutdown after 15s
             self._is_consuming_resources = False
-            # Ustaw moment zakończenia sesji, jeśli jeszcze nie ustawiony
+            # Set session end time if not set
             if self._session_finished_at is None and self._current_session_end is not None:
                 self._session_finished_at = self._current_session_end
                 self._last_session_end_time = self._current_session_end
             
             last_activity = self._session_finished_at or self._last_consumption_time or now
             idle_seconds = (now - last_activity).total_seconds()
-            # Po zakończeniu sesji czekaj 15s, potem wyłącz
+            # Wait 15s after session end, then turn off
             shutdown_timeout = 15
             if idle_seconds >= shutdown_timeout:
                 intentions.append({
@@ -253,7 +247,6 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                     "reason": f"No resource consumption for {idle_seconds:.0f}s",
                     "priority": 1
                 })
-                # Po zgłoszeniu wyłączenia resetujemy śledzenie sesji
                 self._reset_consumption_tracking()
                 self._shutdown_pending = True
                 self._last_session_end_time = now

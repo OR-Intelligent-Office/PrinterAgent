@@ -1,21 +1,19 @@
-"""
-Interfejsy związane z wizualizacją
-"""
+# Visualization interfaces
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
 
 class IVisualizationClient(ABC):
-    """Interfejs klienta wizualizacji (SRP, DIP)"""
+    # Visualization client interface (SRP, DIP)
     
     @abstractmethod
     async def send_alert(self, alert_type: str, data: Dict[str, Any]) -> None:
-        """Wysyła alert do wizualizatora"""
+        # Send alert to visualizer
         pass
     
     @abstractmethod
     async def send_state_update(self, state: Dict[str, Any]) -> None:
-        """Wysyła aktualizację stanu do wizualizatora"""
+        # Send state update to visualizer
         pass
 

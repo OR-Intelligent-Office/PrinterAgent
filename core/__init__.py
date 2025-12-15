@@ -1,6 +1,4 @@
-"""
-Rdzeń BDI - Beliefs, Desires, Intentions
-"""
+# BDI core - Beliefs, Desires, Intentions
 
 from .belief_manager import BeliefManager
 from .desire_manager import DesireManager

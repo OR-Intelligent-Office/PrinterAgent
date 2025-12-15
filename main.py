@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-"""
-Główny plik uruchomieniowy agenta drukarki
-"""
+# Main entry point for printer agent
 
 import asyncio
 import logging
@@ -16,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 async def main():
-    """Główna funkcja - uruchamia agenta"""
-    # Parametry z linii poleceń
+    # Main function - start agent
+    # Command line parameters
     printer_id = sys.argv[1] if len(sys.argv) > 1 else "printer_208"
     simulator_url = sys.argv[2] if len(sys.argv) > 2 else "http://localhost:8080"
     visualization_url = sys.argv[3] if len(sys.argv) > 3 else None
@@ -27,7 +25,7 @@ async def main():
     if visualization_url:
         logger.info(f"Visualization URL: {visualization_url}")
     
-    # Tworzenie agenta przez fabrykę
+    # Create agent via factory
     agent = AgentFactory.create_agent(
         printer_id=printer_id,
         simulator_url=simulator_url,

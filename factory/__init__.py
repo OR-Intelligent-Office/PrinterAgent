@@ -1,6 +1,4 @@
-"""
-Fabryki do tworzenia agentów i komponentów
-"""
+# Factories for creating agents and components
 
 from .agent_factory import AgentFactory
 

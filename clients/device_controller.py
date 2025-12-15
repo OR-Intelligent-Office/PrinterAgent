@@ -1,7 +1,5 @@
-"""
-Implementacja kontrolera urządzeń
-Single Responsibility: tylko kontrola urządzeń przez API
-"""
+# Device controller implementation
+# Single Responsibility: only device control via API
 
 import logging
 from typing import Optional
@@ -12,10 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class SimulatorDeviceController(IDeviceController):
-    """
-    Kontroler urządzeń - wykonuje akcje na urządzeniach przez API
-    Zgodnie z SRP: tylko odpowiedzialność za kontrolę urządzeń
-    """
+    # Device controller - executes device actions via API
+    # SRP: only responsible for device control
     
     def __init__(self, base_url: str = "http://localhost:8080"):
         self.base_url = base_url
@@ -28,12 +24,12 @@ class SimulatorDeviceController(IDeviceController):
         return self._session
     
     async def close(self):
-        """Zamyka sesję HTTP"""
+        # Close HTTP session
         if self._session and not self._session.closed:
             await self._session.close()
     
     async def _control_printer(self, device_id: str, action: str, **kwargs) -> bool:
-        """Wykonuje akcję kontroli drukarki przez API"""
+        # Execute printer control action via API
         try:
             session = await self._get_session()
             payload = {"action": action, **kwargs}
@@ -54,7 +50,7 @@ class SimulatorDeviceController(IDeviceController):
                         logger.error(f"Printer {action} failed: {result.get('error')}")
                         return False
                 else:
-                    # Pobierz szczegóły błędu z odpowiedzi
+                    # Get error details from response
                     try:
                         error_text = await response.text()
                         logger.error(
@@ -68,18 +64,18 @@ class SimulatorDeviceController(IDeviceController):
             return False
     
     async def turn_on(self, device_id: str) -> bool:
-        """Włącza urządzenie"""
+        # Turn on device
         return await self._control_printer(device_id, "turn_on")
     
     async def turn_off(self, device_id: str) -> bool:
-        """Wyłącza urządzenie"""
+        # Turn off device
         return await self._control_printer(device_id, "turn_off")
     
     async def set_toner_level(self, device_id: str, level: int) -> bool:
-        """Ustawia poziom tonera"""
+        # Set toner level
         return await self._control_printer(device_id, "set_toner", level=level)
     
     async def set_paper_level(self, device_id: str, level: int) -> bool:
-        """Ustawia poziom papieru"""
+        # Set paper level
         return await self._control_printer(device_id, "set_paper", level=level)
 

@@ -1,8 +1,6 @@
-"""
-Interfejsy i abstrakcje zgodnie z zasadami SOLID
-Interface Segregation Principle (ISP) - specyficzne interfejsy
-Dependency Inversion Principle (DIP) - zależności od abstrakcji
-"""
+# Interfaces and abstractions following SOLID principles
+# Interface Segregation Principle (ISP) - specific interfaces
+# Dependency Inversion Principle (DIP) - dependencies on abstractions
 
 from .environment_interfaces import IEnvironmentClient
 from .device_interfaces import IDeviceController

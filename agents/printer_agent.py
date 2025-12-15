@@ -1,7 +1,5 @@
-"""
-Główna klasa agenta drukarki
-Zgodnie z SOLID: kompozycja zależności, otwarta na rozszerzenia
-"""
+# Main printer agent class
+# SOLID: dependency composition, open for extensions
 
 import asyncio
 import logging
@@ -18,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class AgentState(Enum):
-    """Stan agenta"""
+    # Agent state
     IDLE = "idle"
     MONITORING = "monitoring"
     PRINTING = "printing"
@@ -27,16 +25,13 @@ class AgentState(Enum):
 
 
 class PrinterAgent:
-    """
-    Agent drukarki z logiką BDI (Beliefs, Desires, Intentions)
-    
-    Zgodnie z SOLID:
-    - SRP: Agent koordynuje komponenty, nie implementuje szczegółów
-    - OCP: Otwarty na rozszerzenia (nowe planisty, kontrolery)
-    - LSP: Wszystkie komponenty są zamienne przez interfejsy
-    - ISP: Używa specyficznych interfejsów
-    - DIP: Zależy od abstrakcji, nie konkretnych implementacji
-    """
+    # Printer agent with BDI logic (Beliefs, Desires, Intentions)
+    # SOLID:
+    # - SRP: Agent coordinates components, doesn't implement details
+    # - OCP: Open for extensions (new planners, controllers)
+    # - LSP: All components are interchangeable via interfaces
+    # - ISP: Uses specific interfaces
+    # - DIP: Depends on abstractions, not concrete implementations
     
     def __init__(
         self,
@@ -53,7 +48,6 @@ class PrinterAgent:
         self.printer_id = printer_id
         self.agent_id = agent_id or f"agent_{printer_id}"
         
-        # Dependency Injection - wszystkie zależności przez interfejsy
         self.environment_client = environment_client
         self.device_controller = device_controller
         self.belief_manager = belief_manager
@@ -62,44 +56,44 @@ class PrinterAgent:
         self.action_executor = action_executor
         self.visualization_client = visualization_client
         
-        # Stan agenta
+        # Agent state
         self.state = AgentState.IDLE
         self.running = False
         self.intentions: list = []
     
     async def run_cycle(self):
-        """Jeden cykl działania agenta (percepcja-deliberacja-akcja)"""
-        # 1. Percepcja - pobierz stan środowiska
+        # One agent cycle (perception-deliberation-action)
+        # Perception: get environment state
         env_state = await self.environment_client.get_environment_state()
         if env_state:
             self.belief_manager.update_beliefs(env_state)
         
-        # 2. Deliberacja - stwórz intencje
+        # Deliberation: create intentions
         beliefs = self.belief_manager.get_beliefs()
         desires = self.desire_manager.get_desires()
         new_intentions = self.intention_planner.deliberate(beliefs, desires)
         
-        # 3. Dodaj nowe intencje (unikaj duplikatów, ale alerty mogą być ponawiane)
+        # Add new intentions (avoid duplicates, but alerts can be repeated)
         for intention in new_intentions:
             action = intention.get("action")
             target = intention.get("target")
             
-            # Dla alertów, zawsze aktualizuj intencję (żeby mieć aktualny poziom)
+            # For alerts, always update intention (to have current level)
             if action in ["alert_low_toner", "alert_low_paper", "handle_failure"]:
-                # Znajdź istniejącą intencję i zaktualizuj ją
+                # Find existing intention and update it
                 existing = next(
                     (i for i in self.intentions 
                      if i.get("action") == action and i.get("target") == target),
                     None
                 )
                 if existing:
-                    # Aktualizuj istniejącą intencję z nowymi danymi
+                    # Update existing intention with new data
                     existing.update(intention)
                 else:
-                    # Dodaj nową intencję
+                    # Add new intention
                     self.intentions.append(intention)
             else:
-                # Dla innych akcji, unikaj duplikatów
+                # For other actions, avoid duplicates
                 if not any(
                     i.get("action") == action and 
                     i.get("target") == target
@@ -107,17 +101,17 @@ class PrinterAgent:
                 ):
                     self.intentions.append(intention)
         
-        # 4. Wykonaj intencje (w kolejności priorytetu)
+        # Execute intentions (in priority order)
         self.intentions.sort(key=lambda x: x.get("priority", 999))
         
         for intention in list(self.intentions):
             success = await self.action_executor.execute(intention)
-            # Usuń intencję tylko jeśli to nie jest alert (alerty są wysyłane cyklicznie)
+            # Remove intention only if it's not an alert (alerts are sent cyclically)
             action = intention.get("action")
             if success and action not in ["alert_low_toner", "alert_low_paper", "handle_failure"]:
                 self.intentions.remove(intention)
         
-        # 5. Aktualizuj stan agenta
+        # Update agent state
         if beliefs:
             if beliefs.state == "BROKEN":
                 self.state = AgentState.ERROR
@@ -129,11 +123,11 @@ class PrinterAgent:
             else:
                 self.state = AgentState.IDLE
         
-        # 6. Wyślij aktualizację stanu do wizualizatora
+        # Send state update to visualizer
         await self._send_state_update()
     
     async def _send_state_update(self):
-        """Wysyła aktualizację stanu do wizualizatora"""
+        # Send state update to visualizer
         beliefs = self.belief_manager.get_beliefs()
         if beliefs:
             await self.visualization_client.send_state_update({
@@ -147,7 +141,7 @@ class PrinterAgent:
             })
     
     async def start(self):
-        """Uruchamia agenta"""
+        # Start agent
         logger.info(f"Starting PrinterAgent {self.agent_id} for printer {self.printer_id}")
         self.running = True
         self.state = AgentState.MONITORING
@@ -161,12 +155,12 @@ class PrinterAgent:
                 await asyncio.sleep(5)
     
     def stop(self):
-        """Zatrzymuje agenta"""
+        # Stop agent
         logger.info(f"Stopping PrinterAgent {self.agent_id}")
         self.running = False
     
     async def cleanup(self):
-        """Czyszczenie zasobów"""
+        # Cleanup resources
         if hasattr(self.environment_client, 'close'):
             await self.environment_client.close()
         if hasattr(self.device_controller, 'close'):
@@ -175,12 +169,10 @@ class PrinterAgent:
             await self.visualization_client.close()
 
     def _choose_cycle_delay(self) -> float:
-        """
-        Wybiera opóźnienie kolejnego cyklu.
-        - 1s podczas drukowania (wymóg odświeżania co sekundę)
-        - 3s gdy drukarka włączona, ale nie drukuje
-        - 5s w trybie czuwania/IDLE (wolniejszy polling, mniej obciążenia)
-        """
+        # Choose delay for next cycle
+        # - 1s during printing (1s refresh requirement)
+        # - 3s when printer ON but not printing
+        # - 5s in IDLE mode (slower polling, less load)
         beliefs = self.belief_manager.get_beliefs()
         if beliefs and beliefs.state == "ON":
             if hasattr(self.intention_planner, "is_consuming") and self.intention_planner.is_consuming():

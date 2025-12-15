@@ -1,6 +1,4 @@
-"""
-Interfejsy związane z BDI (Beliefs, Desires, Intentions)
-"""
+# BDI-related interfaces (Beliefs, Desires, Intentions)
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
@@ -8,35 +6,35 @@ from models.environment_models import EnvironmentState, PrinterState
 
 
 class IBeliefManager(ABC):
-    """Interfejs zarządzania przekonaniami (SRP, DIP)"""
+    # Belief management interface (SRP, DIP)
     
     @abstractmethod
     def update_beliefs(self, env_state: EnvironmentState) -> None:
-        """Aktualizuje przekonania na podstawie stanu środowiska"""
+        # Update beliefs based on environment state
         pass
     
     @abstractmethod
     def get_beliefs(self) -> Optional[PrinterState]:
-        """Zwraca aktualne przekonania"""
+        # Return current beliefs
         pass
 
 
 class IDesireManager(ABC):
-    """Interfejs zarządzania pragnieniami (SRP, DIP)"""
+    # Desire management interface (SRP, DIP)
     
     @abstractmethod
     def get_desires(self) -> List[Dict[str, Any]]:
-        """Zwraca listę pragnień agenta"""
+        # Return list of agent desires
         pass
     
     @abstractmethod
     def update_desires(self, new_desires: List[Dict[str, Any]]) -> None:
-        """Aktualizuje pragnienia"""
+        # Update desires
         pass
 
 
 class IIntentionPlanner(ABC):
-    """Interfejs planowania intencji (SRP, DIP)"""
+    # Intention planning interface (SRP, DIP)
     
     @abstractmethod
     def deliberate(
@@ -44,9 +42,6 @@ class IIntentionPlanner(ABC):
         beliefs: Optional[PrinterState],
         desires: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
-        """
-        Proces deliberacji - analizuje przekonania i pragnienia,
-        tworzy intencje (plan działania)
-        """
+        # Deliberation process - analyze beliefs and desires, create intentions (action plan)
         pass
 

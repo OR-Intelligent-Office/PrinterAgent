@@ -42,7 +42,7 @@ async def get_all_printers(simulator_url: str, retries: int = 3) -> Set[str]:
                         state = await response.json()
                         printers = set()
                         
-                        # Iterate through all rooms and find printers
+                        # Find printers in all rooms
                         rooms = state.get("rooms", [])
                         for room in rooms:
                             printer = room.get("printer")
@@ -136,10 +136,9 @@ async def main():
     logger.info(f"Check interval for new printers: {check_interval} seconds")
     logger.info("")
     
-    # Dictionary storing running agents: printer_id -> agent
     running_agents: Dict[str, PrinterAgent] = {}
     
-    # Wait for simulator to start and check if it's running
+    # Wait for simulator to start
     logger.info("Waiting for simulator...")
     max_wait_time = 30
     wait_interval = 2
@@ -194,7 +193,7 @@ async def main():
     # Initial agent startup
     await check_and_start_agents()
     
-    # Monitoring loop for new printers
+    # Monitoring loop
     try:
         while True:
             await asyncio.sleep(check_interval)

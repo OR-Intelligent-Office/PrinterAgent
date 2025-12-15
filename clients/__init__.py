@@ -1,6 +1,4 @@
-"""
-Klienci do komunikacji z zewnętrznymi systemami
-"""
+# Clients for communication with external systems
 
 from .environment_client import SimulatorEnvironmentClient
 from .device_controller import SimulatorDeviceController

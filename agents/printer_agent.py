@@ -221,13 +221,13 @@ class PrinterAgent:
         """
         Wybiera opóźnienie kolejnego cyklu.
         - 1s podczas drukowania (wymóg odświeżania co sekundę)
-        - 2s gdy drukarka włączona, ale nie drukuje
-        - 3s w trybie czuwania/IDLE
+        - 3s gdy drukarka włączona, ale nie drukuje
+        - 5s w trybie czuwania/IDLE (wolniejszy polling, mniej obciążenia)
         """
         beliefs = self.belief_manager.get_beliefs()
         if beliefs and beliefs.state == "ON":
             if hasattr(self.intention_planner, "is_consuming") and self.intention_planner.is_consuming():
                 return 1.0
-            return 2.0
-        return 3.0
+            return 3.0
+        return 5.0
 

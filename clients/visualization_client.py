@@ -83,20 +83,21 @@ class HttpVisualizationClient(IVisualizationClient):
             logger.debug(f"State update (no visualization): {state}")
             return
         
+        # Jeśli base_url wskazuje na symulator (8080), nie wysyłamy aktualizacji
+        # Wizualizator pobiera dane bezpośrednio z symulatora przez API
+        if ":8080" in self.base_url or "localhost:8080" in self.base_url:
+            logger.debug(
+                f"State update (visualizer reads from simulator): printer_id={state.get('printer_id')}, "
+                f"printer_state={state.get('printer_state')}, agent_state={state.get('state')}"
+            )
+            return
+        
+        # Próba wysłania bezpośrednio do wizualizatora (jeśli base_url wskazuje na wizualizator)
         try:
             session = await self._get_session()
             if not session:
                 return
             
-            # Wizualizator pobiera dane z symulatora, więc nie wysyłamy aktualizacji bezpośrednio
-            # Zamiast tego logujemy stan dla debugowania
-            logger.debug(
-                f"Agent state update: printer_id={state.get('printer_id')}, "
-                f"printer_state={state.get('printer_state')}, "
-                f"agent_state={state.get('state')}"
-            )
-            
-            # Próba wysłania do wizualizatora (jeśli ma endpoint)
             async with session.post(
                 f"{self.base_url}/api/agent-state",
                 json=state,
@@ -105,14 +106,15 @@ class HttpVisualizationClient(IVisualizationClient):
                 if response.status == 200:
                     logger.debug(f"State update sent to visualizer")
                 elif response.status == 404:
-                    # Wizualizator nie ma tego endpointu - to normalne, wizualizator pobiera dane z symulatora
-                    logger.debug(f"Visualizer doesn't have /api/agent-state endpoint (normal - visualizer reads from simulator)")
+                    # Wizualizator nie ma tego endpointu - to normalne
+                    logger.debug(f"Visualizer doesn't have /api/agent-state endpoint (normal)")
                 else:
                     logger.debug(f"Visualizer response: {response.status}")
         except asyncio.TimeoutError:
             # Timeout jest normalny, jeśli wizualizator nie ma tego endpointu
             logger.debug(f"Timeout sending state update (normal if visualizer doesn't have endpoint)")
         except Exception as e:
+            # Logujemy tylko jako debug, nie warning, bo to nie jest błąd krytyczny
             logger.debug(f"Could not send state update to visualizer: {e}")
 
 

@@ -29,28 +29,24 @@ class ActionExecutor(IActionExecutor):
         target = intention.get("target")
         reason = intention.get("reason", "")
         
-        logger.info(f"Executing intention: {action} - {reason}")
+        logger.debug(f"Executing intention: {action} - {reason}")
         
         try:
             if action == "turn_on":
                 result = await self.device_controller.turn_on(target)
-                if result:
-                    logger.info(f"✅ Successfully turned ON printer {target}")
-                else:
-                    logger.warning(f"❌ Failed to turn ON printer {target}")
+                if not result:
+                    logger.warning(f"Failed to turn ON printer {target}")
                 return result
             
             elif action == "turn_off":
                 result = await self.device_controller.turn_off(target)
-                if result:
-                    logger.info(f"✅ Successfully turned OFF printer {target}")
-                else:
-                    logger.warning(f"❌ Failed to turn OFF printer {target}")
+                if not result:
+                    logger.warning(f"Failed to turn OFF printer {target}")
                 return result
             
             elif action == "alert_low_toner":
                 toner_level = intention.get("toner_level", 0)
-                logger.warning(f"⚠️ ALERT: Low toner level in {target}: {toner_level}%")
+                logger.debug(f"Low toner level in {target}: {toner_level}%")
                 await self.visualization_client.send_alert("low_toner", {
                     "printer_id": target,
                     "toner_level": toner_level
@@ -59,7 +55,7 @@ class ActionExecutor(IActionExecutor):
             
             elif action == "alert_low_paper":
                 paper_level = intention.get("paper_level", 0)
-                logger.warning(f"⚠️ ALERT: Low paper level in {target}: {paper_level}%")
+                logger.debug(f"Low paper level in {target}: {paper_level}%")
                 await self.visualization_client.send_alert("low_paper", {
                     "printer_id": target,
                     "paper_level": paper_level
@@ -74,7 +70,7 @@ class ActionExecutor(IActionExecutor):
                 return True
             
             elif action == "handle_power_outage":
-                logger.warning("Power outage - printer will be unavailable")
+                logger.debug("Power outage - printer will be unavailable")
                 return True
             
             elif action == "consume_resources":
@@ -123,6 +119,6 @@ class ActionExecutor(IActionExecutor):
                 return False
                 
         except Exception as e:
-            logger.error(f"Error executing intention {action}: {e}")
+            logger.warning(f"Error executing intention {action}: {e}")
             return False
 

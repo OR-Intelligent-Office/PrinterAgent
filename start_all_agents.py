@@ -50,41 +50,31 @@ async def get_all_printers(simulator_url: str, retries: int = 3) -> Set[str]:
                                 printers.add(printer["id"])
                         
                         if printers:
-                            logger.info(f"Found {len(printers)} printers: {printers}")
+                            logger.info(f"Successfully connected to simulator. Found {len(printers)} printers: {printers}")
                         return printers
                     elif response.status == 500:
-                        error_text = await response.text()
-                        logger.warning(
-                            f"Simulator returned 500 error (attempt {attempt + 1}/{retries}): {error_text[:200]}"
-                        )
                         if attempt < retries - 1:
                             await asyncio.sleep(2)
                             continue
                     else:
-                        logger.warning(
-                            f"Failed to fetch devices: {response.status} (attempt {attempt + 1}/{retries})"
-                        )
                         if attempt < retries - 1:
                             await asyncio.sleep(2)
                             continue
                         return set()
         except asyncio.TimeoutError:
-            logger.warning(f"Timeout while fetching printers (attempt {attempt + 1}/{retries})")
             if attempt < retries - 1:
                 await asyncio.sleep(2)
                 continue
-        except aiohttp.ClientError as e:
-            logger.warning(f"Connection error with simulator (attempt {attempt + 1}/{retries}): {e}")
+        except aiohttp.ClientError:
             if attempt < retries - 1:
                 await asyncio.sleep(2)
                 continue
-        except Exception as e:
-            logger.error(f"Unexpected error while fetching printers: {e}")
+        except Exception:
             if attempt < retries - 1:
                 await asyncio.sleep(2)
                 continue
     
-    logger.error("Failed to fetch printer list after all attempts")
+    logger.warning("Failed to fetch printer list after all attempts")
     return set()
 
 
@@ -104,7 +94,7 @@ async def start_agent_for_printer(
     Returns:
         Started PrinterAgent instance
     """
-    logger.info(f"Starting agent for printer: {printer_id}")
+    logger.debug(f"Starting agent for printer: {printer_id}")
     
     agent = AgentFactory.create_agent(
         printer_id=printer_id,
@@ -127,19 +117,15 @@ async def main():
     visualization_url = sys.argv[2] if len(sys.argv) > 2 else None
     check_interval = int(sys.argv[3]) if len(sys.argv) > 3 else 30
     
-    logger.info("=" * 60)
-    logger.info("Printer Agent Manager")
-    logger.info("=" * 60)
-    logger.info(f"Simulator URL: {simulator_url}")
+    logger.info("Printer Agent Manager started")
+    logger.debug(f"Simulator URL: {simulator_url}")
     if visualization_url:
-        logger.info(f"Visualization URL: {visualization_url}")
-    logger.info(f"Check interval for new printers: {check_interval} seconds")
-    logger.info("")
+        logger.debug(f"Visualization URL: {visualization_url}")
+    logger.debug(f"Check interval: {check_interval} seconds")
     
     running_agents: Dict[str, PrinterAgent] = {}
     
     # Wait for simulator to start
-    logger.info("Waiting for simulator...")
     max_wait_time = 30
     wait_interval = 2
     waited = 0
@@ -147,16 +133,15 @@ async def main():
     while waited < max_wait_time:
         printers = await get_all_printers(simulator_url, retries=1)
         if printers:
-            logger.info(f"Simulator is running. Found {len(printers)} printers.")
+            logger.debug(f"Found {len(printers)} printers")
             break
         else:
-            logger.info(f"Waiting for simulator... ({waited}/{max_wait_time}s)")
+            logger.debug(f"Waiting for simulator... ({waited}/{max_wait_time}s)")
             await asyncio.sleep(wait_interval)
             waited += wait_interval
     
     if waited >= max_wait_time:
-        logger.error("Simulator did not respond after 30 seconds. Check if simulator is running.")
-        logger.error("Start simulator: cd OrSimulator && ./gradlew run")
+        logger.warning("Simulator did not respond. Start simulator: cd OrSimulator && ./gradlew run")
         return
     
     async def check_and_start_agents():
@@ -178,17 +163,17 @@ async def main():
                     running_agents[printer_id] = agent
                     await asyncio.sleep(1)  # Small delay between starts
                 except Exception as e:
-                    logger.error(f"Error starting agent for {printer_id}: {e}")
+                    logger.warning(f"Error starting agent for {printer_id}: {e}")
         
         # Remove agents for printers that no longer exist
         printers_to_remove = set(running_agents.keys()) - printers
         for printer_id in printers_to_remove:
-            logger.info(f"Printer {printer_id} no longer exists, stopping agent...")
+            logger.debug(f"Printer {printer_id} no longer exists, stopping agent")
             agent = running_agents.pop(printer_id)
             agent.stop()
             await agent.cleanup()
         
-        logger.info(f"Status: {len(running_agents)} active agents for printers: {list(running_agents.keys())}")
+        logger.debug(f"Active agents: {len(running_agents)} for printers: {list(running_agents.keys())}")
     
     # Initial agent startup
     await check_and_start_agents()
@@ -199,14 +184,11 @@ async def main():
             await asyncio.sleep(check_interval)
             await check_and_start_agents()
     except KeyboardInterrupt:
-        logger.info("")
-        logger.info("=" * 60)
         logger.info("Stopping all agents...")
-        logger.info("=" * 60)
         
         # Stop all agents
         for printer_id, agent in running_agents.items():
-            logger.info(f"Stopping agent for {printer_id}...")
+            logger.debug(f"Stopping agent for {printer_id}")
             agent.stop()
             await agent.cleanup()
         
@@ -217,4 +199,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("Stopped")
+        logger.debug("Stopped")

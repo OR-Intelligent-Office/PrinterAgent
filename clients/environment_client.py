@@ -45,10 +45,10 @@ class SimulatorEnvironmentClient(IEnvironmentClient):
                         daylight_intensity=data.get("daylightIntensity", 1.0)
                     )
                 else:
-                    logger.error(f"Failed to fetch environment state: {response.status}")
+                    logger.debug(f"Failed to fetch environment state: {response.status}")
                     return None
         except Exception as e:
-            logger.error(f"Error fetching environment state: {e}")
+            logger.debug(f"Error fetching environment state: {e}")
             return None
     
     async def get_printer_state(self, printer_id: str) -> Optional[PrinterState]:
@@ -87,9 +87,9 @@ class SimulatorEnvironmentClient(IEnvironmentClient):
                         power_outage=env_state.power_outage
                     )
                 else:
-                    logger.error(f"Failed to fetch printer state: {response.status}")
+                    logger.debug(f"Failed to fetch printer state: {response.status}")
                     return None
         except Exception as e:
-            logger.error(f"Error fetching printer state: {e}")
+            logger.debug(f"Error fetching printer state: {e}")
             return None
 

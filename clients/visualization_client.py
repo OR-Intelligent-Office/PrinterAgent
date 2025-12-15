@@ -53,22 +53,18 @@ class HttpVisualizationClient(IVisualizationClient):
                     f"{self.base_url}/api/environment/alerts",
                     json=alert
                 ) as response:
-                    if response.status == 200:
-                        logger.info(f"⚠️ Alert sent to simulator: {alert_type} - {data.get('printer_id', 'unknown')}")
-                    else:
-                        logger.warning(f"Failed to send alert to simulator: {response.status}")
+                    if response.status != 200:
+                        logger.debug(f"Failed to send alert to simulator: {response.status}")
             else:
                 # Send directly to visualizer
                 async with session.post(
                     f"{self.base_url}/api/alerts",
                     json=alert
                 ) as response:
-                    if response.status == 200:
-                        logger.debug(f"Alert sent to visualizer: {alert_type}")
-                    else:
-                        logger.warning(f"Failed to send alert: {response.status}")
+                    if response.status != 200:
+                        logger.debug(f"Failed to send alert: {response.status}")
         except Exception as e:
-            logger.warning(f"Could not send alert: {e}")
+            logger.debug(f"Could not send alert: {e}")
     
     async def send_state_update(self, state: Dict[str, Any]) -> None:
         # Send state update to visualizer

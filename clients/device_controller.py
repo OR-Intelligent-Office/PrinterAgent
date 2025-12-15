@@ -43,24 +43,14 @@ class SimulatorDeviceController(IDeviceController):
                     # Handle both boolean and string success values
                     success_value = result.get("success")
                     is_success = success_value is True or success_value == "true"
-                    if is_success:
-                        logger.info(f"Printer {action} successful for {device_id}")
-                        return True
-                    else:
-                        logger.error(f"Printer {action} failed: {result.get('error')}")
-                        return False
+                    if not is_success:
+                        logger.warning(f"Printer {action} failed for {device_id}: {result.get('error')}")
+                    return is_success
                 else:
-                    # Get error details from response
-                    try:
-                        error_text = await response.text()
-                        logger.error(
-                            f"HTTP error {response.status} for {action} on {device_id}: {error_text[:500]}"
-                        )
-                    except Exception:
-                        logger.error(f"HTTP error {response.status} for {action} on {device_id} (could not read error body)")
+                    logger.debug(f"HTTP error {response.status} for {action} on {device_id}")
                     return False
         except Exception as e:
-            logger.error(f"Error controlling printer: {e}")
+            logger.debug(f"Error controlling printer: {e}")
             return False
     
     async def turn_on(self, device_id: str) -> bool:

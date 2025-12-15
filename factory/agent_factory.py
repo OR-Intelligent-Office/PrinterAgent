@@ -75,6 +75,6 @@ class AgentFactory:
             agent_id=agent_id_final
         )
         
-        logger.info(f"Agent {agent_id_final} created successfully")
+        logger.debug(f"Agent {agent_id_final} created successfully")
         return agent
 

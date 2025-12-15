@@ -64,7 +64,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         self._current_session_end = now + timedelta(seconds=duration)
         self._last_consumption_time = None
         self._is_consuming_resources = True
-        logger.info(
+        logger.debug(
             f"Printer {printer_id} entered print mode for {duration}s "
             f"(range {self.print_duration_min}-{self.print_duration_max}s)"
         )

@@ -21,9 +21,9 @@ async def main():
     visualization_url = sys.argv[3] if len(sys.argv) > 3 else None
     
     logger.info(f"Starting PrinterAgent for printer: {printer_id}")
-    logger.info(f"Simulator URL: {simulator_url}")
+    logger.debug(f"Simulator URL: {simulator_url}")
     if visualization_url:
-        logger.info(f"Visualization URL: {visualization_url}")
+        logger.debug(f"Visualization URL: {visualization_url}")
     
     # Create agent via factory
     agent = AgentFactory.create_agent(
@@ -35,7 +35,7 @@ async def main():
     try:
         await agent.start()
     except KeyboardInterrupt:
-        logger.info("Shutting down agent...")
+        logger.debug("Shutting down agent...")
         agent.stop()
         await agent.cleanup()
 

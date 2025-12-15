@@ -142,7 +142,7 @@ class PrinterAgent:
     
     async def start(self):
         # Start agent
-        logger.info(f"Starting PrinterAgent {self.agent_id} for printer {self.printer_id}")
+        logger.debug(f"Starting PrinterAgent {self.agent_id} for printer {self.printer_id}")
         self.running = True
         self.state = AgentState.MONITORING
         
@@ -151,12 +151,12 @@ class PrinterAgent:
                 await self.run_cycle()
                 await asyncio.sleep(self._choose_cycle_delay())
             except Exception as e:
-                logger.error(f"Error in agent cycle: {e}")
+                logger.warning(f"Error in agent cycle: {e}")
                 await asyncio.sleep(5)
     
     def stop(self):
         # Stop agent
-        logger.info(f"Stopping PrinterAgent {self.agent_id}")
+        logger.debug(f"Stopping PrinterAgent {self.agent_id}")
         self.running = False
     
     async def cleanup(self):

@@ -44,5 +44,5 @@ class DesireManager(IDesireManager):
     def update_desires(self, new_desires: List[Dict[str, Any]]) -> None:
         # Update desires
         self._desires = new_desires
-        logger.info(f"Desires updated: {len(self._desires)} desires")
+        logger.debug(f"Desires updated: {len(self._desires)} desires")
 

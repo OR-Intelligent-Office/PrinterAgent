@@ -30,7 +30,7 @@ class BeliefManager(IBeliefManager):
                 break
         
         if not printer_data or not room_data:
-            logger.warning(f"Printer {self.printer_id} not found in environment")
+            logger.debug(f"Printer {self.printer_id} not found in environment")
             return
         
         # Update beliefs

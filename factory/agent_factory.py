@@ -55,9 +55,10 @@ class AgentFactory:
         intention_planner = RuleBasedIntentionPlanner(
             toner_threshold_low=toner_threshold_low,
             paper_threshold_low=paper_threshold_low,
-            motion_timeout=20,  # 20 seconds of inactivity = 20 minutes simulation
-            active_consumption_time_min=1,  # Min active consumption: 1 second
-            active_consumption_time_max=15  # Max active consumption: 15 seconds
+            print_duration_min=1,           # Print session min: 1 second
+            print_duration_max=10,          # Print session max: 10 seconds
+            consumption_interval_seconds=1, # Per-second resource use
+            idle_shutdown_seconds=10        # Auto shutdown after 10s idle
         )
         
         # Klient wizualizacji - używa symulatora do wysyłania alertów (symulator przekazuje do wizualizatora)

@@ -5,7 +5,6 @@ Zgodnie z SOLID: kompozycja zależności, otwarta na rozszerzenia
 
 import asyncio
 import logging
-import random
 from typing import Optional
 from enum import Enum
 
@@ -134,9 +133,12 @@ class PrinterAgent:
             if beliefs.state == "BROKEN":
                 self.state = AgentState.ERROR
             elif beliefs.state == "ON":
-                self.state = AgentState.PRINTING
+                if hasattr(self.intention_planner, "is_consuming") and self.intention_planner.is_consuming():
+                    self.state = AgentState.PRINTING
+                else:
+                    self.state = AgentState.MONITORING
             else:
-                self.state = AgentState.MONITORING
+                self.state = AgentState.IDLE
         
         # 7. Wyślij aktualizację stanu do wizualizatora
         await self._send_state_update()
@@ -196,9 +198,7 @@ class PrinterAgent:
         while self.running:
             try:
                 await self.run_cycle()
-                # Random delay between 3-20 seconds
-                delay = random.uniform(3.0, 20.0)
-                await asyncio.sleep(delay)
+                await asyncio.sleep(self._choose_cycle_delay())
             except Exception as e:
                 logger.error(f"Error in agent cycle: {e}")
                 await asyncio.sleep(5)
@@ -216,4 +216,18 @@ class PrinterAgent:
             await self.device_controller.close()
         if hasattr(self.visualization_client, 'close'):
             await self.visualization_client.close()
+
+    def _choose_cycle_delay(self) -> float:
+        """
+        Wybiera opóźnienie kolejnego cyklu.
+        - 1s podczas drukowania (wymóg odświeżania co sekundę)
+        - 2s gdy drukarka włączona, ale nie drukuje
+        - 3s w trybie czuwania/IDLE
+        """
+        beliefs = self.belief_manager.get_beliefs()
+        if beliefs and beliefs.state == "ON":
+            if hasattr(self.intention_planner, "is_consuming") and self.intention_planner.is_consuming():
+                return 1.0
+            return 2.0
+        return 3.0
 

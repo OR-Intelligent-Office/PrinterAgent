@@ -1,8 +1,7 @@
-"""
-Klient wizualizacji
-Single Responsibility: tylko komunikacja z wizualizatorem
-"""
+# Visualization client
+# Single Responsibility: only communication with visualizer
 
+import asyncio
 import logging
 from typing import Dict, Any, Optional
 import aiohttp
@@ -12,10 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class HttpVisualizationClient(IVisualizationClient):
-    """
-    Klient wizualizacji przez HTTP
-    Zgodnie z SRP: tylko odpowiedzialność za komunikację z wizualizatorem
-    """
+    # Visualization client via HTTP
+    # SRP: only responsible for communication with visualizer
     
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = base_url
@@ -30,12 +27,12 @@ class HttpVisualizationClient(IVisualizationClient):
         return self._session
     
     async def close(self):
-        """Zamyka sesję HTTP"""
+        # Close HTTP session
         if self._session and not self._session.closed:
             await self._session.close()
     
     async def send_alert(self, alert_type: str, data: Dict[str, Any]) -> None:
-        """Wysyła alert do symulatora (który przekazuje do wizualizatora)"""
+        # Send alert to simulator (which forwards to visualizer)
         if not self.base_url:
             logger.debug(f"Alert (no visualization): {alert_type} - {data}")
             return
@@ -45,16 +42,13 @@ class HttpVisualizationClient(IVisualizationClient):
             if not session:
                 return
             
-            # Wysyłamy do symulatora, który przechowuje alerty i udostępnia je wizualizatorowi
             alert = {
                 "type": alert_type,
                 "data": data
             }
             
-            # Jeśli base_url wskazuje na symulator (8080), użyj endpointu alertów
-            # W przeciwnym razie próbuj bezpośrednio do wizualizatora
+            # Send to simulator (8080) or directly to visualizer
             if ":8080" in self.base_url or "localhost:8080" in self.base_url:
-                # Wysyłamy do symulatora
                 async with session.post(
                     f"{self.base_url}/api/environment/alerts",
                     json=alert
@@ -64,7 +58,7 @@ class HttpVisualizationClient(IVisualizationClient):
                     else:
                         logger.warning(f"Failed to send alert to simulator: {response.status}")
             else:
-                # Wysyłamy bezpośrednio do wizualizatora (stary sposób)
+                # Send directly to visualizer
                 async with session.post(
                     f"{self.base_url}/api/alerts",
                     json=alert
@@ -77,11 +71,19 @@ class HttpVisualizationClient(IVisualizationClient):
             logger.warning(f"Could not send alert: {e}")
     
     async def send_state_update(self, state: Dict[str, Any]) -> None:
-        """Wysyła aktualizację stanu do wizualizatora"""
+        # Send state update to visualizer
         if not self.base_url:
             logger.debug(f"State update (no visualization): {state}")
             return
         
+        # Visualizer reads from simulator, skip sending update
+        if ":8080" in self.base_url or "localhost:8080" in self.base_url:
+            logger.debug(
+                f"State update (visualizer reads from simulator): printer_id={state.get('printer_id')}"
+            )
+            return
+        
+        # Try sending directly to visualizer
         try:
             session = await self._get_session()
             if not session:
@@ -89,27 +91,30 @@ class HttpVisualizationClient(IVisualizationClient):
             
             async with session.post(
                 f"{self.base_url}/api/agent-state",
-                json=state
+                json=state,
+                timeout=aiohttp.ClientTimeout(total=2)
             ) as response:
                 if response.status == 200:
                     logger.debug(f"State update sent to visualizer")
+                elif response.status == 404:
+                    logger.debug(f"Visualizer doesn't have /api/agent-state endpoint")
                 else:
-                    logger.warning(f"Failed to send state update: {response.status}")
+                    logger.debug(f"Visualizer response: {response.status}")
+        except asyncio.TimeoutError:
+            logger.debug(f"Timeout sending state update")
         except Exception as e:
-            logger.warning(f"Could not send state update to visualizer: {e}")
+            logger.debug(f"Could not send state update: {e}")
 
 
 class NullVisualizationClient(IVisualizationClient):
-    """
-    Null object pattern - klient wizualizacji, który nic nie robi
-    Użyteczne gdy wizualizacja nie jest dostępna
-    """
+    # Null object pattern - visualization client that does nothing
+    # Useful when visualization is not available
     
     async def send_alert(self, alert_type: str, data: Dict[str, Any]) -> None:
-        """Nic nie robi"""
+        # Do nothing
         pass
     
     async def send_state_update(self, state: Dict[str, Any]) -> None:
-        """Nic nie robi"""
+        # Do nothing
         pass
 

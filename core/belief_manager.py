@@ -1,7 +1,5 @@
-"""
-Zarządzanie przekonaniami agenta (Beliefs)
-Single Responsibility: tylko zarządzanie przekonaniami
-"""
+# Belief management (BDI Beliefs)
+# Single Responsibility: only belief management
 
 import logging
 from typing import Optional
@@ -12,18 +10,16 @@ logger = logging.getLogger(__name__)
 
 
 class BeliefManager(IBeliefManager):
-    """
-    Zarządza przekonaniami agenta (Beliefs w BDI)
-    Zgodnie z SRP: tylko odpowiedzialność za przekonania
-    """
+    # Manages agent beliefs (BDI Beliefs)
+    # SRP: only responsible for beliefs
     
     def __init__(self, printer_id: str):
         self.printer_id = printer_id
         self._beliefs: Optional[PrinterState] = None
     
     def update_beliefs(self, env_state: EnvironmentState) -> None:
-        """Aktualizuje przekonania na podstawie stanu środowiska"""
-        # Znajdź pokój z naszą drukarką
+        # Update beliefs based on environment state
+        # Find room with printer
         printer_data = None
         room_data = None
         
@@ -37,7 +33,7 @@ class BeliefManager(IBeliefManager):
             logger.warning(f"Printer {self.printer_id} not found in environment")
             return
         
-        # Aktualizuj przekonania
+        # Update beliefs
         self._beliefs = PrinterState(
             printer_id=self.printer_id,
             room_id=room_data.get("id", ""),
@@ -53,6 +49,6 @@ class BeliefManager(IBeliefManager):
         logger.debug(f"Beliefs updated: {self._beliefs}")
     
     def get_beliefs(self) -> Optional[PrinterState]:
-        """Zwraca aktualne przekonania"""
+        # Return current beliefs
         return self._beliefs
 

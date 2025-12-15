@@ -1,9 +1,6 @@
-"""
-Modele danych używane w systemie
-"""
+# Data models used in the system
 
 from .environment_models import EnvironmentState, PrinterState
-from .message_models import Message
 
-__all__ = ['EnvironmentState', 'PrinterState', 'Message']
+__all__ = ['EnvironmentState', 'PrinterState']
 

@@ -1,16 +1,14 @@
-"""
-Interfejsy związane z wykonywaniem akcji
-"""
+# Action execution interfaces
 
 from abc import ABC, abstractmethod
 from typing import Dict, Any
 
 
 class IActionExecutor(ABC):
-    """Interfejs wykonawcy akcji (SRP, DIP)"""
+    # Action executor interface (SRP, DIP)
     
     @abstractmethod
     async def execute(self, intention: Dict[str, Any]) -> bool:
-        """Wykonuje intencję (akcję)"""
+        # Execute intention (action)
         pass
 

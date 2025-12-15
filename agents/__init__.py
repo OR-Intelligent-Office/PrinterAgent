@@ -1,6 +1,4 @@
-"""
-Główne klasy agentów
-"""
+# Main agent classes
 
 from .printer_agent import PrinterAgent, AgentState
 

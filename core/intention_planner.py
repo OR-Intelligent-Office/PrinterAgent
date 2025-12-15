@@ -43,6 +43,9 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         self._last_consumption_time: Optional[datetime] = None
         self._last_printer_state: Optional[str] = None
         self._is_consuming_resources: bool = False
+        self._shutdown_pending: bool = False  # blokuje nowe sesje do faktycznego OFF
+        self._print_session_started_once: bool = False  # pojedyncza sesja na cykl ON
+        self._session_finished_at: Optional[datetime] = None  # moment zakończenia trybu print
     
     def _reset_consumption_tracking(self):
         """Czyści dane sesji drukowania."""
@@ -50,6 +53,9 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         self._current_session_end = None
         self._last_consumption_time = None
         self._is_consuming_resources = False
+        self._shutdown_pending = False
+        self._print_session_started_once = False
+        self._session_finished_at = None
     
     def _start_print_session(self, now: datetime, printer_id: str):
         """Rozpoczyna nową sesję drukowania o losowym czasie trwania."""
@@ -128,6 +134,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 })
                 self._reset_consumption_tracking()
                 self._last_printer_state = beliefs.state
+                self._shutdown_pending = True
                 intentions.sort(key=lambda x: x.get("priority", 999))
                 return intentions
         
@@ -144,13 +151,15 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 })
             self._reset_consumption_tracking()
             self._last_printer_state = beliefs.state
+            self._shutdown_pending = False
             intentions.sort(key=lambda x: x.get("priority", 999))
             return intentions
         
         # Od tego momentu drukarka jest włączona
         state_just_turned_on = self._last_printer_state != "ON"
-        if state_just_turned_on or self._current_session_end is None:
+        if not self._shutdown_pending and (state_just_turned_on and not self._print_session_started_once):
             self._start_print_session(now, beliefs.printer_id)
+            self._print_session_started_once = True
         
         # Natychmiastowe wyłączenie gdy pokój pusty
         if beliefs.people_count <= 0:
@@ -162,6 +171,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
             })
             self._reset_consumption_tracking()
             self._last_printer_state = beliefs.state
+            self._shutdown_pending = True
             intentions.sort(key=lambda x: x.get("priority", 999))
             return intentions
         
@@ -173,7 +183,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
             and beliefs.toner_level > 0
         )
         
-        if session_active:
+        if session_active and not self._shutdown_pending:
             time_since_last_tick = (
                 (now - self._last_consumption_time).total_seconds()
                 if self._last_consumption_time
@@ -201,14 +211,15 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
         else:
             # Sesja wygasła lub brak zasobów - brak dalszego zużycia
             self._is_consuming_resources = False
+            # Ustaw moment zakończenia sesji, jeśli jeszcze nie ustawiony
+            if self._session_finished_at is None and self._current_session_end is not None:
+                self._session_finished_at = self._current_session_end
             
-            last_activity = (
-                self._last_consumption_time
-                or self._current_session_end
-                or now
-            )
+            last_activity = self._session_finished_at or self._last_consumption_time or now
             idle_seconds = (now - last_activity).total_seconds()
-            if idle_seconds >= self.idle_shutdown_seconds:
+            # Po zakończeniu sesji czekaj 15s, potem wyłącz
+            shutdown_timeout = 15
+            if idle_seconds >= shutdown_timeout:
                 intentions.append({
                     "action": "turn_off",
                     "target": beliefs.printer_id,
@@ -217,6 +228,7 @@ class RuleBasedIntentionPlanner(IIntentionPlanner):
                 })
                 # Po zgłoszeniu wyłączenia resetujemy śledzenie sesji
                 self._reset_consumption_tracking()
+                self._shutdown_pending = True
         
         self._last_printer_state = beliefs.state
         intentions.sort(key=lambda x: x.get("priority", 999))

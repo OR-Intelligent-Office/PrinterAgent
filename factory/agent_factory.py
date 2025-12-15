@@ -14,7 +14,6 @@ from core.belief_manager import BeliefManager
 from core.desire_manager import DesireManager
 from core.intention_planner import RuleBasedIntentionPlanner
 from core.action_executor import ActionExecutor
-from communication.message_bus import SimpleMessageBus
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +70,8 @@ class AgentFactory:
         
         action_executor = ActionExecutor(device_controller, viz_client)
         
-        # Komunikacja między agentami
-        agent_id_final = agent_id or f"agent_{printer_id}"
-        message_bus = SimpleMessageBus(agent_id_final)
-        
         # Tworzenie agenta z wszystkimi zależnościami
+        agent_id_final = agent_id or f"agent_{printer_id}"
         agent = PrinterAgent(
             printer_id=printer_id,
             environment_client=env_client,
@@ -84,8 +80,6 @@ class AgentFactory:
             desire_manager=desire_manager,
             intention_planner=intention_planner,
             action_executor=action_executor,
-            message_sender=message_bus,
-            message_receiver=message_bus,
             visualization_client=viz_client,
             agent_id=agent_id_final
         )

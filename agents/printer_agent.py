@@ -12,7 +12,6 @@ from interfaces.environment_interfaces import IEnvironmentClient
 from interfaces.device_interfaces import IDeviceController
 from interfaces.bdi_interfaces import IBeliefManager, IDesireManager, IIntentionPlanner
 from interfaces.action_interfaces import IActionExecutor
-from interfaces.communication_interfaces import IMessageSender, IMessageReceiver
 from interfaces.visualization_interfaces import IVisualizationClient
 
 logger = logging.getLogger(__name__)
@@ -48,8 +47,6 @@ class PrinterAgent:
         desire_manager: IDesireManager,
         intention_planner: IIntentionPlanner,
         action_executor: IActionExecutor,
-        message_sender: IMessageSender,
-        message_receiver: IMessageReceiver,
         visualization_client: IVisualizationClient,
         agent_id: Optional[str] = None
     ):
@@ -63,8 +60,6 @@ class PrinterAgent:
         self.desire_manager = desire_manager
         self.intention_planner = intention_planner
         self.action_executor = action_executor
-        self.message_sender = message_sender
-        self.message_receiver = message_receiver
         self.visualization_client = visualization_client
         
         # Stan agenta
@@ -79,18 +74,12 @@ class PrinterAgent:
         if env_state:
             self.belief_manager.update_beliefs(env_state)
         
-        # 2. Przetwórz wiadomości od innych agentów
-        messages = self.message_receiver.receive_messages()
-        if messages:
-            self.message_receiver.process_messages(messages)
-            self._handle_messages(messages)
-        
-        # 3. Deliberacja - stwórz intencje
+        # 2. Deliberacja - stwórz intencje
         beliefs = self.belief_manager.get_beliefs()
         desires = self.desire_manager.get_desires()
         new_intentions = self.intention_planner.deliberate(beliefs, desires)
         
-        # 4. Dodaj nowe intencje (unikaj duplikatów, ale alerty mogą być ponawiane)
+        # 3. Dodaj nowe intencje (unikaj duplikatów, ale alerty mogą być ponawiane)
         for intention in new_intentions:
             action = intention.get("action")
             target = intention.get("target")
@@ -118,7 +107,7 @@ class PrinterAgent:
                 ):
                     self.intentions.append(intention)
         
-        # 5. Wykonaj intencje (w kolejności priorytetu)
+        # 4. Wykonaj intencje (w kolejności priorytetu)
         self.intentions.sort(key=lambda x: x.get("priority", 999))
         
         for intention in list(self.intentions):
@@ -128,7 +117,7 @@ class PrinterAgent:
             if success and action not in ["alert_low_toner", "alert_low_paper", "handle_failure"]:
                 self.intentions.remove(intention)
         
-        # 6. Aktualizuj stan agenta
+        # 5. Aktualizuj stan agenta
         if beliefs:
             if beliefs.state == "BROKEN":
                 self.state = AgentState.ERROR
@@ -140,40 +129,8 @@ class PrinterAgent:
             else:
                 self.state = AgentState.IDLE
         
-        # 7. Wyślij aktualizację stanu do wizualizatora
+        # 6. Wyślij aktualizację stanu do wizualizatora
         await self._send_state_update()
-    
-    def _handle_messages(self, messages: list):
-        """Obsługuje wiadomości od innych agentów"""
-        for msg in messages:
-            if msg.get("performative") == "request":
-                if msg.get("content", {}).get("action") == "status":
-                    beliefs = self.belief_manager.get_beliefs()
-                    self.message_sender.send_message(
-                        msg.get("sender"),
-                        "inform",
-                        {
-                            "printer_id": self.printer_id,
-                            "state": beliefs.state if beliefs else "unknown",
-                            "toner": beliefs.toner_level if beliefs else 0,
-                            "paper": beliefs.paper_level if beliefs else 0
-                        }
-                    )
-            
-            elif msg.get("performative") == "query":
-                query_type = msg.get("content", {}).get("query_type")
-                if query_type == "availability":
-                    beliefs = self.belief_manager.get_beliefs()
-                    available = (
-                        beliefs and
-                        beliefs.state == "ON" and
-                        not beliefs.power_outage
-                    )
-                    self.message_sender.send_message(
-                        msg.get("sender"),
-                        "inform",
-                        {"available": available, "printer_id": self.printer_id}
-                    )
     
     async def _send_state_update(self):
         """Wysyła aktualizację stanu do wizualizatora"""

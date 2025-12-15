@@ -8,7 +8,6 @@ from .environment_interfaces import IEnvironmentClient
 from .device_interfaces import IDeviceController
 from .bdi_interfaces import IBeliefManager, IDesireManager, IIntentionPlanner
 from .action_interfaces import IActionExecutor
-from .communication_interfaces import IMessageSender, IMessageReceiver
 from .visualization_interfaces import IVisualizationClient
 
 __all__ = [
@@ -18,8 +17,6 @@ __all__ = [
     'IDesireManager',
     'IIntentionPlanner',
     'IActionExecutor',
-    'IMessageSender',
-    'IMessageReceiver',
     'IVisualizationClient'
 ]
 

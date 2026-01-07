@@ -55,37 +55,31 @@ pip install -r requirements.txt
 
 ## Uruchomienie
 
-### Pojedynczy agent
+### Jeden agent (manager) dla wszystkich drukarek
 
 ```bash
-python main.py [printer_id] [simulator_url] [visualization_url]
+python main.py [simulator_url] [visualization_url] [check_interval]
 ```
 
 Przykłady:
 ```bash
-# Domyślne ustawienia (printer_208, localhost:8080)
+# Domyślnie: symulator na localhost:8080
 python main.py
 
-# Konkretna drukarka
-python main.py printer_209
-
 # Z wizualizatorem
-python main.py printer_208 http://localhost:8080 http://localhost:3000
+python main.py http://localhost:8080 http://localhost:3000
+
+# Z innym interwałem odświeżania listy drukarek (sekundy)
+python main.py http://localhost:8080 http://localhost:3000 30
 ```
 
-### Wiele agentów
+### Pojedyncza drukarka (tryb zgodności)
 
-Można uruchomić wiele agentów dla różnych drukarek:
+Jeśli podasz `printer_*` jako pierwszy argument, `main.py` uruchomi tryb pojedynczej drukarki:
 
 ```bash
-# Terminal 1
-python main.py printer_208
-
-# Terminal 2
 python main.py printer_209
-
-# Terminal 3
-python main.py printer_101
+python main.py printer_208 http://localhost:8080 http://localhost:3000
 ```
 
 ## Funkcjonalności

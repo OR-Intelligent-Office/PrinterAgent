@@ -1,10 +1,6 @@
-"""
-Implementacja klienta środowiska
-Single Responsibility: tylko komunikacja z API symulatora
-"""
-
 import logging
 from typing import Optional
+
 import aiohttp
 from interfaces.environment_interfaces import IEnvironmentClient
 from models.environment_models import EnvironmentState, PrinterState
@@ -13,28 +9,20 @@ logger = logging.getLogger(__name__)
 
 
 class SimulatorEnvironmentClient(IEnvironmentClient):
-    """
-    Klient środowiska - komunikacja z OrSimulator API
-    Zgodnie z SRP: tylko odpowiedzialność za komunikację z API
-    """
-    
     def __init__(self, base_url: str = "http://localhost:8080"):
         self.base_url = base_url
         self._session: Optional[aiohttp.ClientSession] = None
     
     async def _get_session(self) -> aiohttp.ClientSession:
-        """Lazy initialization session"""
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession()
         return self._session
     
     async def close(self):
-        """Zamyka sesję HTTP"""
         if self._session and not self._session.closed:
             await self._session.close()
     
     async def get_environment_state(self) -> Optional[EnvironmentState]:
-        """Pobiera aktualny stan środowiska z symulatora"""
         try:
             session = await self._get_session()
             async with session.get(f"{self.base_url}/api/environment/state") as response:
@@ -49,14 +37,13 @@ class SimulatorEnvironmentClient(IEnvironmentClient):
                         daylight_intensity=data.get("daylightIntensity", 1.0)
                     )
                 else:
-                    logger.error(f"Failed to fetch environment state: {response.status}")
+                    logger.debug(f"Failed to fetch environment state: {response.status}")
                     return None
         except Exception as e:
-            logger.error(f"Error fetching environment state: {e}")
+            logger.debug(f"Error fetching environment state: {e}")
             return None
     
     async def get_printer_state(self, printer_id: str) -> Optional[PrinterState]:
-        """Pobiera stan konkretnej drukarki"""
         try:
             session = await self._get_session()
             async with session.get(
@@ -65,7 +52,6 @@ class SimulatorEnvironmentClient(IEnvironmentClient):
                 if response.status == 200:
                     printer_data = await response.json()
                     
-                    # Musimy też pobrać informacje o pokoju
                     env_state = await self.get_environment_state()
                     if not env_state:
                         return None
@@ -91,9 +77,9 @@ class SimulatorEnvironmentClient(IEnvironmentClient):
                         power_outage=env_state.power_outage
                     )
                 else:
-                    logger.error(f"Failed to fetch printer state: {response.status}")
+                    logger.debug(f"Failed to fetch printer state: {response.status}")
                     return None
         except Exception as e:
-            logger.error(f"Error fetching printer state: {e}")
+            logger.debug(f"Error fetching printer state: {e}")
             return None
 

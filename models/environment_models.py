@@ -1,6 +1,4 @@
-"""
-Modele danych środowiska
-"""
+# Environment data models
 
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
@@ -8,7 +6,7 @@ from typing import List, Dict, Any, Optional
 
 @dataclass
 class EnvironmentState:
-    """Model stanu środowiska"""
+    # Environment state model
     simulation_time: str
     rooms: List[Dict[str, Any]]
     external_temperature: float
@@ -19,7 +17,7 @@ class EnvironmentState:
 
 @dataclass
 class PrinterState:
-    """Model stanu drukarki"""
+    # Printer state model
     printer_id: str
     room_id: str
     room_name: str

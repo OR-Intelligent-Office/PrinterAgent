@@ -1,0 +1,51 @@
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# --- Kotlin / Gradle / Compose ---
+**/.gradle/
+**/.kotlin/
+**/build/
+**/out/
+**/.classpath
+**/.project
+**/.settings/
+**/.factorypath
+**/.sts4-cache/
+
+# local machine paths / secrets
+**/local.properties
+
+# logs
+**/*.log
+
+# --- Kotlin/JS + Node ---
+**/node_modules/
+**/kotlin-js-store/
+**/.kotlin-js-store/
+
+# --- Python ---
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# virtualenvs
+venv/
+.venv/
+**/venv/
+**/.venv/
+
+# python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+
+

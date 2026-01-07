@@ -1,13 +1,10 @@
-# Agent factory - creates agent with all dependencies
-# Dependency Injection Container
-
 import logging
 from typing import Optional
 
 from agents.printer_agent import PrinterAgent
 from clients.environment_client import SimulatorEnvironmentClient
 from clients.device_controller import SimulatorDeviceController
-from clients.visualization_client import HttpVisualizationClient, NullVisualizationClient
+from clients.visualization_client import HttpVisualizationClient
 from core.belief_manager import BeliefManager
 from core.desire_manager import DesireManager
 from core.intention_planner import RuleBasedIntentionPlanner
@@ -17,9 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class AgentFactory:
-    # Factory for creating agents with all dependencies
-    # DIP: centralizes dependency creation
-    
     @staticmethod
     def create_agent(
         printer_id: str,
@@ -28,18 +22,7 @@ class AgentFactory:
         agent_id: Optional[str] = None,
         toner_threshold_low: int = 20,
         paper_threshold_low: int = 15,
-        motion_timeout: int = 300
     ) -> PrinterAgent:
-        # Create agent with all dependencies
-        # Args:
-        #   printer_id: Printer ID to manage
-        #   simulator_url: Simulator URL
-        #   visualization_url: Visualizer URL (optional)
-        #   agent_id: Agent ID (optional)
-        #   toner_threshold_low: Low toner threshold
-        #   paper_threshold_low: Low paper threshold
-        #   motion_timeout: Idle timeout before shutdown (seconds)
-        # Create components
         env_client = SimulatorEnvironmentClient(simulator_url)
         device_controller = SimulatorDeviceController(simulator_url)
         belief_manager = BeliefManager(printer_id)
@@ -50,10 +33,12 @@ class AgentFactory:
             print_duration_min=1,
             print_duration_max=10,
             consumption_interval_seconds=1,
-            idle_shutdown_seconds=10
+            idle_shutdown_seconds=20,
+            room_inactivity_shutdown_seconds=10,
+            min_on_seconds=10,
+            min_off_seconds=10,
         )
         
-        # Visualization client uses simulator for alerts
         if visualization_url:
             viz_client = HttpVisualizationClient(visualization_url)
         else:
@@ -61,7 +46,6 @@ class AgentFactory:
         
         action_executor = ActionExecutor(device_controller, viz_client)
         
-        # Create agent with all dependencies
         agent_id_final = agent_id or f"agent_{printer_id}"
         agent = PrinterAgent(
             printer_id=printer_id,

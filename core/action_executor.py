@@ -1,6 +1,3 @@
-# Action executor
-# Single Responsibility: only action execution
-
 import logging
 from typing import Dict, Any
 from interfaces.action_interfaces import IActionExecutor
@@ -11,10 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class ActionExecutor(IActionExecutor):
-    # Executes agent intentions
-    # SRP: only responsible for action execution
-    # DIP: depends on abstractions (IDeviceController, IVisualizationClient)
-    
     def __init__(
         self,
         device_controller: IDeviceController,
@@ -24,7 +17,6 @@ class ActionExecutor(IActionExecutor):
         self.visualization_client = visualization_client
     
     async def execute(self, intention: Dict[str, Any]) -> bool:
-        # Execute intention (action)
         action = intention.get("action")
         target = intention.get("target")
         reason = intention.get("reason", "")
@@ -70,7 +62,9 @@ class ActionExecutor(IActionExecutor):
                 return True
             
             elif action == "handle_power_outage":
-                logger.debug("Power outage - printer will be unavailable")
+                await self.visualization_client.send_alert("power_outage", {
+                    "message": "Power outage - devices unavailable"
+                })
                 return True
             
             elif action == "consume_resources":

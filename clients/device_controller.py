@@ -1,8 +1,6 @@
-# Device controller implementation
-# Single Responsibility: only device control via API
-
 import logging
 from typing import Optional
+
 import aiohttp
 from interfaces.device_interfaces import IDeviceController
 
@@ -10,21 +8,16 @@ logger = logging.getLogger(__name__)
 
 
 class SimulatorDeviceController(IDeviceController):
-    # Device controller - executes device actions via API
-    # SRP: only responsible for device control
-    
     def __init__(self, base_url: str = "http://localhost:8080"):
         self.base_url = base_url
         self._session: Optional[aiohttp.ClientSession] = None
     
     async def _get_session(self) -> aiohttp.ClientSession:
-        """Lazy initialization session"""
         if self._session is None or self._session.closed:
             self._session = aiohttp.ClientSession()
         return self._session
     
     async def close(self):
-        # Close HTTP session
         if self._session and not self._session.closed:
             await self._session.close()
     

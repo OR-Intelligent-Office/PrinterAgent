@@ -1,6 +1,3 @@
-# Main printer agent class
-# SOLID: dependency composition, open for extensions
-
 import asyncio
 import logging
 from typing import Optional
@@ -25,14 +22,6 @@ class AgentState(Enum):
 
 
 class PrinterAgent:
-    # Printer agent with BDI logic (Beliefs, Desires, Intentions)
-    # SOLID:
-    # - SRP: Agent coordinates components, doesn't implement details
-    # - OCP: Open for extensions (new planners, controllers)
-    # - LSP: All components are interchangeable via interfaces
-    # - ISP: Uses specific interfaces
-    # - DIP: Depends on abstractions, not concrete implementations
-    
     def __init__(
         self,
         printer_id: str,
@@ -62,56 +51,31 @@ class PrinterAgent:
         self.intentions: list = []
     
     async def run_cycle(self):
-        # One agent cycle (perception-deliberation-action)
-        # Perception: get environment state
         env_state = await self.environment_client.get_environment_state()
         if env_state:
             self.belief_manager.update_beliefs(env_state)
         
-        # Deliberation: create intentions
         beliefs = self.belief_manager.get_beliefs()
         desires = self.desire_manager.get_desires()
         new_intentions = self.intention_planner.deliberate(beliefs, desires)
         
-        # Add new intentions (avoid duplicates, but alerts can be repeated)
         for intention in new_intentions:
             action = intention.get("action")
             target = intention.get("target")
-            
-            # For alerts, always update intention (to have current level)
-            if action in ["alert_low_toner", "alert_low_paper", "handle_failure"]:
-                # Find existing intention and update it
-                existing = next(
-                    (i for i in self.intentions 
-                     if i.get("action") == action and i.get("target") == target),
-                    None
-                )
-                if existing:
-                    # Update existing intention with new data
-                    existing.update(intention)
-                else:
-                    # Add new intention
-                    self.intentions.append(intention)
-            else:
-                # For other actions, avoid duplicates
-                if not any(
-                    i.get("action") == action and 
-                    i.get("target") == target
-                    for i in self.intentions
-                ):
-                    self.intentions.append(intention)
+
+            if not any(
+                i.get("action") == action and i.get("target") == target
+                for i in self.intentions
+            ):
+                self.intentions.append(intention)
         
-        # Execute intentions (in priority order)
         self.intentions.sort(key=lambda x: x.get("priority", 999))
         
         for intention in list(self.intentions):
             success = await self.action_executor.execute(intention)
-            # Remove intention only if it's not an alert (alerts are sent cyclically)
-            action = intention.get("action")
-            if success and action not in ["alert_low_toner", "alert_low_paper", "handle_failure"]:
+            if success:
                 self.intentions.remove(intention)
         
-        # Update agent state
         if beliefs:
             if beliefs.state == "BROKEN":
                 self.state = AgentState.ERROR
@@ -123,11 +87,9 @@ class PrinterAgent:
             else:
                 self.state = AgentState.IDLE
         
-        # Send state update to visualizer
         await self._send_state_update()
     
     async def _send_state_update(self):
-        # Send state update to visualizer
         beliefs = self.belief_manager.get_beliefs()
         if beliefs:
             await self.visualization_client.send_state_update({
@@ -141,7 +103,6 @@ class PrinterAgent:
             })
     
     async def start(self):
-        # Start agent
         logger.debug(f"Starting PrinterAgent {self.agent_id} for printer {self.printer_id}")
         self.running = True
         self.state = AgentState.MONITORING
@@ -155,12 +116,10 @@ class PrinterAgent:
                 await asyncio.sleep(5)
     
     def stop(self):
-        # Stop agent
         logger.debug(f"Stopping PrinterAgent {self.agent_id}")
         self.running = False
     
     async def cleanup(self):
-        # Cleanup resources
         if hasattr(self.environment_client, 'close'):
             await self.environment_client.close()
         if hasattr(self.device_controller, 'close'):
@@ -169,10 +128,6 @@ class PrinterAgent:
             await self.visualization_client.close()
 
     def _choose_cycle_delay(self) -> float:
-        # Choose delay for next cycle
-        # - 1s during printing (1s refresh requirement)
-        # - 3s when printer ON but not printing
-        # - 5s in IDLE mode (slower polling, less load)
         beliefs = self.belief_manager.get_beliefs()
         if beliefs and beliefs.state == "ON":
             if hasattr(self.intention_planner, "is_consuming") and self.intention_planner.is_consuming():

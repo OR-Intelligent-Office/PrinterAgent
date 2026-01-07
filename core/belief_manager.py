@@ -1,6 +1,3 @@
-# Belief management (BDI Beliefs)
-# Single Responsibility: only belief management
-
 import logging
 from typing import Optional
 from interfaces.bdi_interfaces import IBeliefManager
@@ -10,16 +7,11 @@ logger = logging.getLogger(__name__)
 
 
 class BeliefManager(IBeliefManager):
-    # Manages agent beliefs (BDI Beliefs)
-    # SRP: only responsible for beliefs
-    
     def __init__(self, printer_id: str):
         self.printer_id = printer_id
         self._beliefs: Optional[PrinterState] = None
     
     def update_beliefs(self, env_state: EnvironmentState) -> None:
-        # Update beliefs based on environment state
-        # Find room with printer
         printer_data = None
         room_data = None
         
@@ -33,7 +25,6 @@ class BeliefManager(IBeliefManager):
             logger.debug(f"Printer {self.printer_id} not found in environment")
             return
         
-        # Update beliefs
         self._beliefs = PrinterState(
             printer_id=self.printer_id,
             room_id=room_data.get("id", ""),
@@ -49,6 +40,5 @@ class BeliefManager(IBeliefManager):
         logger.debug(f"Beliefs updated: {self._beliefs}")
     
     def get_beliefs(self) -> Optional[PrinterState]:
-        # Return current beliefs
         return self._beliefs
 
